@@ -496,6 +496,7 @@ data GeneralFlag
    | Opt_OmitInterfacePragmas
    | Opt_ExposeAllUnfoldings
    | Opt_WriteInterface -- forces .hi files to be written even with -fno-code
+   | Opt_WriteHie -- generate .hie files
 
    -- profiling opts
    | Opt_AutoSccsOnIndividualCafs
@@ -529,6 +530,7 @@ data GeneralFlag
    | Opt_GhciSandbox
    | Opt_GhciHistory
    | Opt_GhciLeakCheck
+   | Opt_ValidateHie
    | Opt_LocalGhciHistory
    | Opt_NoIt
    | Opt_HelpfulErrors
@@ -855,12 +857,14 @@ data DynFlags = DynFlags {
   objectDir             :: Maybe String,
   dylibInstallName      :: Maybe String,
   hiDir                 :: Maybe String,
+  hieDir                :: Maybe String,
   stubDir               :: Maybe String,
   dumpDir               :: Maybe String,
 
   objectSuf             :: String,
   hcSuf                 :: String,
   hiSuf                 :: String,
+  hieSuf                :: String,
 
   canGenerateDynamicToo :: IORef Bool,
   dynObjectSuf          :: String,
@@ -1731,12 +1735,14 @@ defaultDynFlags mySettings myLlvmTargets =
         objectDir               = Nothing,
         dylibInstallName        = Nothing,
         hiDir                   = Nothing,
+        hieDir                  = Nothing,
         stubDir                 = Nothing,
         dumpDir                 = Nothing,
 
         objectSuf               = phaseInputExt StopLn,
         hcSuf                   = phaseInputExt HCc,
         hiSuf                   = "hi",
+        hieSuf                  = "hie",
 
         canGenerateDynamicToo   = panic "defaultDynFlags: No canGenerateDynamicToo",
         dynObjectSuf            = "dyn_" ++ phaseInputExt StopLn,
@@ -2322,10 +2328,10 @@ getVerbFlags dflags
   | verbosity dflags >= 4 = ["-v"]
   | otherwise             = []
 
-setObjectDir, setHiDir, setStubDir, setDumpDir, setOutputDir,
+setObjectDir, setHiDir, setHieDir, setStubDir, setDumpDir, setOutputDir,
          setDynObjectSuf, setDynHiSuf,
          setDylibInstallName,
-         setObjectSuf, setHiSuf, setHcSuf, parseDynLibLoaderMode,
+         setObjectSuf, setHiSuf, setHieSuf, setHcSuf, parseDynLibLoaderMode,
          setPgmP, addOptl, addOptc, addOptcxx, addOptP,
          addCmdlineFramework, addHaddockOpts, addGhciScript,
          setInteractivePrint
@@ -2335,17 +2341,23 @@ setOutputFile, setDynOutputFile, setOutputHi, setDumpPrefixForce
 
 setObjectDir  f d = d { objectDir  = Just f}
 setHiDir      f d = d { hiDir      = Just f}
+setHieDir     f d = d { hieDir     = Just f}
 setStubDir    f d = d { stubDir    = Just f, includePaths = f : includePaths d }
   -- -stubdir D adds an implicit -I D, so that gcc can find the _stub.h file
   -- \#included from the .hc file when compiling via C (i.e. unregisterised
   -- builds).
 setDumpDir    f d = d { dumpDir    = Just f}
-setOutputDir  f = setObjectDir f . setHiDir f . setStubDir f . setDumpDir f
+setOutputDir  f = setObjectDir f
+                . setHieDir f
+                . setHiDir f
+                . setStubDir f
+                . setDumpDir f
 setDylibInstallName  f d = d { dylibInstallName = Just f}
 
 setObjectSuf    f d = d { objectSuf    = f}
 setDynObjectSuf f d = d { dynObjectSuf = f}
 setHiSuf        f d = d { hiSuf        = f}
+setHieSuf       f d = d { hieSuf       = f}
 setDynHiSuf     f d = d { dynHiSuf     = f}
 setHcSuf        f d = d { hcSuf        = f}
 
@@ -2913,8 +2925,10 @@ dynamic_flags_deps = [
   , make_ord_flag defGhcFlag "dynosuf"           (hasArg setDynObjectSuf)
   , make_ord_flag defGhcFlag "hcsuf"             (hasArg setHcSuf)
   , make_ord_flag defGhcFlag "hisuf"             (hasArg setHiSuf)
+  , make_ord_flag defGhcFlag "hiesuf"            (hasArg setHieSuf)
   , make_ord_flag defGhcFlag "dynhisuf"          (hasArg setDynHiSuf)
   , make_ord_flag defGhcFlag "hidir"             (hasArg setHiDir)
+  , make_ord_flag defGhcFlag "hiedir"            (hasArg setHieDir)
   , make_ord_flag defGhcFlag "tmpdir"            (hasArg setTmpDir)
   , make_ord_flag defGhcFlag "stubdir"           (hasArg setStubDir)
   , make_ord_flag defGhcFlag "dumpdir"           (hasArg setDumpDir)
@@ -3886,6 +3900,7 @@ fFlagsDeps = [
   flagSpec "gen-manifest"                     Opt_GenManifest,
   flagSpec "ghci-history"                     Opt_GhciHistory,
   flagSpec "ghci-leak-check"                  Opt_GhciLeakCheck,
+  flagSpec "validate-ide-info"                Opt_ValidateHie,
   flagGhciSpec "local-ghci-history"           Opt_LocalGhciHistory,
   flagGhciSpec "no-it"                        Opt_NoIt,
   flagSpec "ghci-sandbox"                     Opt_GhciSandbox,
@@ -3939,6 +3954,7 @@ fFlagsDeps = [
   flagSpec "strictness"                       Opt_Strictness,
   flagSpec "use-rpaths"                       Opt_RPath,
   flagSpec "write-interface"                  Opt_WriteInterface,
+  flagSpec "write-ide-info"                   Opt_WriteHie,
   flagSpec "unbox-small-strict-fields"        Opt_UnboxSmallStrictFields,
   flagSpec "unbox-strict-fields"              Opt_UnboxStrictFields,
   flagSpec "vectorisation-avoidance"          Opt_VectorisationAvoidance,
