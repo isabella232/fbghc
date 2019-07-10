@@ -183,7 +183,7 @@ void initProfiling (void)
     CCS_MAIN->root = CCS_MAIN;
     ccsSetSelected(CCS_MAIN);
 
-    initProfiling2();
+    refreshProfilingCCSs();
 
     if (RtsFlags.CcFlags.doCostCentres) {
         initTimeProfiling();
@@ -197,7 +197,7 @@ void initProfiling (void)
 //
 // Should be called after loading any new Haskell code.
 //
-void initProfiling2 (void)
+void refreshProfilingCCSs (void)
 {
     // make CCS_MAIN the parent of all the pre-defined CCSs.
     CostCentreStack *next;
