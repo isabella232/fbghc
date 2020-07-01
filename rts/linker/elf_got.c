@@ -81,7 +81,7 @@ fillGot(ObjectCode * oc) {
                 if(   STT_NOTYPE == ELF_ST_TYPE(symbol->elf_sym->st_info)
                    || STB_WEAK   == ELF_ST_BIND(symbol->elf_sym->st_info)) {
                     if(0x0 == symbol->addr) {
-                        symbol->addr = lookupSymbol_(symbol->name);
+                        symbol->addr = lookupDependentSymbol(symbol->name, oc);
                         if(0x0 == symbol->addr) {
                             errorBelch("Failed to lookup symbol: %s\n",
                                        symbol->name);

@@ -11,6 +11,7 @@
 #include "BeginPrivate.h"
 
 typedef struct hashtable HashTable; /* abstract */
+typedef struct strhashtable StrHashTable;
 
 /* Hash table access where the keys are StgWords.
  * Values are passed into the hash table and stored as `const void *` values,
@@ -18,7 +19,7 @@ typedef struct hashtable HashTable; /* abstract */
  * `const` so that calling function can mutate what the pointer points to if it
  * needs to.
  */
-HashTable * allocHashTable    ( void );
+HashTable * allocHashTable  ( void );
 void        insertHashTable ( HashTable *table, StgWord key, const void *data );
 void *      lookupHashTable ( const HashTable *table, StgWord key );
 void *      removeHashTable ( HashTable *table, StgWord key, const void *data );
@@ -33,8 +34,11 @@ int keyCountHashTable (HashTable *table);
 int keysHashTable(HashTable *table, StgWord keys[], int szKeys);
 
 typedef void (*MapHashFn)(void *data, StgWord key, const void *value);
+// Return true -> continue; false -> stop
+typedef bool (*IterHashFn)(void *data, StgWord key, const void *value);
 
 void mapHashTable(HashTable *table, void *data, MapHashFn fn);
+void iterHashTable(HashTable *table, void *data, IterHashFn);
 
 /* Hash table access where the keys are C strings (the strings are
  * assumed to be allocated by the caller, and mustn't be deallocated
@@ -62,6 +66,32 @@ int hashStr(const HashTable *table, StgWord key);
  */
 void freeHashTable ( HashTable *table, void (*freeDataFun)(void *) );
 
-void exitHashTable ( void );
+INLINE_HEADER void freeStrHashTable ( StrHashTable *table, void (*freeDataFun)(void *) )
+{
+    freeHashTable((HashTable*)table, freeDataFun);
+}
+
+/*
+ * Hash set API
+ *
+ * A hash set is bascially a hash table where values are NULL.
+ */
+
+typedef struct hashtable HashSet;
+
+INLINE_HEADER HashSet *allocHashSet ( void )
+{
+    return (HashSet*)allocHashTable();
+}
+
+INLINE_HEADER void freeHashSet ( HashSet *set )
+{
+    freeHashTable((HashTable*)set, NULL);
+}
+
+INLINE_HEADER void insertHashSet ( HashSet *set, StgWord key )
+{
+    insertHashTable((HashTable*)set, key, NULL);
+}
 
 #include "EndPrivate.h"
