@@ -1446,8 +1446,8 @@ plusImportAvails
                    imp_dep_pkgs      = dpkgs1 `S.union` dpkgs2,
                    imp_trust_pkgs    = tpkgs1 `S.union` tpkgs2,
                    imp_trust_own_pkg = tself1 || tself2,
-                   imp_orphs         = orphs1 `unionLists` orphs2,
-                   imp_finsts        = finsts1 `unionLists` finsts2 }
+                   imp_orphs         = orphs1 `unionListsOrd` orphs2,
+                   imp_finsts        = finsts1 `unionListsOrd` finsts2 }
   where
     plus_mod_dep r1@(m1, boot1) r2@(m2, boot2)
       | ASSERT2( m1 == m2, (ppr m1 <+> ppr m2) $$ (ppr boot1 <+> ppr boot2) )

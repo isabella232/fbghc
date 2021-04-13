@@ -8,7 +8,7 @@
 {-# LANGUAGE CPP #-}
 
 module ListSetOps (
-        unionLists, minusList, deleteBys,
+        unionLists, unionListsOrd, minusList, deleteBys,
 
         -- Association lists
         Assoc, assoc, assocMaybe, assocUsing, assocDefault, assocDefaultUsing,
@@ -51,6 +51,10 @@ deleteBys eq xs ys = foldl' (flip (deleteBy eq)) xs ys
 ************************************************************************
 -}
 
+unionListsOrd :: (Outputable a, Ord a) => [a] -> [a] -> [a]
+unionListsOrd xs ys = [x | x <- xs, notInYs x] ++ ys
+  where
+    notInYs = flip S.notMember (S.fromList ys)
 
 unionLists :: (Outputable a, Eq a) => [a] -> [a] -> [a]
 -- Assumes that the arguments contain no duplicates
