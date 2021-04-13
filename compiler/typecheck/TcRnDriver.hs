@@ -316,7 +316,7 @@ implicitPreludeWarn
 
 tcRnImports :: HscEnv -> [LImportDecl GhcPs] -> TcM TcGblEnv
 tcRnImports hsc_env import_decls
-  = do  { (rn_imports, rdr_env, imports, hpc_info) <- rnImports import_decls ;
+  = do  { (rn_imports, rdr_env, imports, hpc_info) <- {-# SCC "rnImports" #-} rnImports import_decls ;
 
         ; this_mod <- getModule
         ; let { dep_mods :: ModuleNameEnv (ModuleName, IsBootInterface)
@@ -332,7 +332,7 @@ tcRnImports hsc_env import_decls
               ; want_instances :: ModuleName -> Bool
               ; want_instances mod = mod `elemUFM` dep_mods
                                    && mod /= moduleName this_mod
-              ; (home_insts, home_fam_insts) = hptInstances hsc_env
+              ; (home_insts, home_fam_insts) = {-# SCC "hptInstances" #-} hptInstances hsc_env
                                                             want_instances
               } ;
 
@@ -344,11 +344,11 @@ tcRnImports hsc_env import_decls
                 -- Update the gbl env
         ; updGblEnv ( \ gbl ->
             gbl {
-              tcg_rdr_env      = tcg_rdr_env gbl `plusGlobalRdrEnv` rdr_env,
-              tcg_imports      = tcg_imports gbl `plusImportAvails` imports,
+              tcg_rdr_env      = {-# SCC "tcg_rdr_env" #-} tcg_rdr_env gbl `plusGlobalRdrEnv` rdr_env,
+              tcg_imports      = {-# SCC "tcg_imports" #-} tcg_imports gbl `plusImportAvails` imports,
               tcg_rn_imports   = rn_imports,
-              tcg_inst_env     = extendInstEnvList (tcg_inst_env gbl) home_insts,
-              tcg_fam_inst_env = extendFamInstEnvList (tcg_fam_inst_env gbl)
+              tcg_inst_env     = {-# SCC "tcg_inst_env" #-} extendInstEnvList (tcg_inst_env gbl) home_insts,
+              tcg_fam_inst_env = {-# SCC "tcg_fam_inst_env" #-} extendFamInstEnvList (tcg_fam_inst_env gbl)
                                                       home_fam_insts,
               tcg_hpc          = hpc_info
             }) $ do {
@@ -369,7 +369,8 @@ tcRnImports hsc_env import_decls
                 -- modules until we either try to use the instances they
                 -- define, or define our own family instances, at which
                 -- point we need to check them for consistency.)
-        ; loadModuleInterfaces (text "Loading orphan modules")
+        ; {-# SCC "loadModuleInterfaces" #-}
+          loadModuleInterfaces (text "Loading orphan modules")
                                (filter (/= this_mod) (imp_orphs imports))
 
                 -- Check type-family consistency between imports.
@@ -378,7 +379,8 @@ tcRnImports hsc_env import_decls
         ; let { dir_imp_mods = moduleEnvKeys
                              . imp_mods
                              $ imports }
-        ; checkFamInstConsistency dir_imp_mods
+        ; {-# SCC "checkFamInstConsistency" #-}
+          checkFamInstConsistency dir_imp_mods
         ; traceRn "rn1: } checking family instance consistency" empty
 
         ; getGblEnv } }
